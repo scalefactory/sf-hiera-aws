@@ -25,9 +25,16 @@ class Hiera
                 type = config[key]['type']
 
                 if self.methods.include? "type_#{type}".to_sym
-                    answer = self.send("type_#{type}".to_sym, config[key])
-                    Hiera.debug( answer )
-                    return answer
+
+                    begin
+                        answer = self.send("type_#{type}".to_sym, config[key])
+                        Hiera.debug( answer )
+                        return answer
+                    rescue Aws::Errors::MissingRegionError
+                        Hiera.warn("No IAM role or ENV based AWS config - skipping")
+                        return nil
+                    end
+
                 end
 
                 Hiera.debug("Type of AWS SDK lookup '#{type}' invalid")
