@@ -30,7 +30,7 @@ class Hiera
                         answer = self.send("type_#{type}".to_sym, config[key])
                         Hiera.debug( answer )
                         return answer
-                    rescue Aws::Errors::MissingRegionError
+                    rescue Aws::Errors::MissingRegionError, Aws::Errors::MissingCredentialsError
                         Hiera.warn("No IAM role or ENV based AWS config - skipping")
                         return nil
                     end
