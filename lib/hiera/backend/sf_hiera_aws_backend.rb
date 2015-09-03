@@ -7,8 +7,22 @@ class Hiera
             public
 
             def initialize
+
                 require 'aws-sdk-resources'
+                require 'net/http'
+                require 'json'
+
+                begin
+                    http = Net::HTTP.new('169.254.169.254', 80)
+                    http.open_timeout = 1
+                    http.read_timeout = 1
+                    instance_identity = JSON.parse(http.request(Net::HTTP::Get.new("/latest/dynamic/instance-identity/document")).body)
+                    Aws.config.update({ region: instance_identity['region'] })
+                rescue Exception
+                    Hiera.warn('No link-local endpoint - can\'t calculate region')
+                end
                 Hiera.debug('Hiera AWS SDK backend started')
+
             end
 
             def lookup (key, scope, order_override, resolution_type)
