@@ -1,14 +1,11 @@
 class Hiera
-
     module Backend
-
         class Sf_hiera_aws_backend
+            private
 
-            public
+            @instance_identity = nil
 
-            def initialize
-
-                require 'aws-sdk-resources'
+            def read_link_local_data
                 require 'net/http'
                 require 'json'
 
@@ -16,88 +13,140 @@ class Hiera
                     http = Net::HTTP.new('169.254.169.254', 80)
                     http.open_timeout = 1
                     http.read_timeout = 1
-                    instance_identity = JSON.parse(http.request(Net::HTTP::Get.new("/latest/dynamic/instance-identity/document")).body)
-                    Aws.config.update({ region: instance_identity['region'] })
-                rescue Exception
+                    @instance_identity = JSON.parse(http.request(Net::HTTP::Get.new('/latest/dynamic/instance-identity/document')).body)
+                rescue Errno::EHOSTUNREACH, Net::OpenTimeout, Timeout::Error
                     Hiera.warn('No link-local endpoint - can\'t calculate region')
                 end
-                Hiera.debug('Hiera AWS SDK backend started')
-
             end
 
-            def lookup (key, scope, order_override, resolution_type)
+            # Wrapped these in getters for dependency injection purposes
+            def get_rds_client
+                Aws::RDS::Client.new
+            end
 
+            def get_ec2_client
+                Aws::EC2::Client.new
+            end
+
+            def get_elasticache_client
+                Aws::ElastiCache::Client.new
+            end
+
+            public
+
+            def initialize
+                require 'aws-sdk-resources'
+
+                read_link_local_data
+                unless @instance_identity.nil?
+                    Aws.config.update(region: @instance_identity['region'])
+                end
+
+                Hiera.debug('Hiera AWS SDK backend started')
+            end
+
+            def lookup(key, scope, _order_override, _resolution_type)
                 config = recursive_interpolate_config(aws_config, scope)
 
                 Hiera.debug("Looking up '#{key} in AWS SDK backend")
 
-                if ! config.key? key
-                    return nil
-                end
+                return nil unless config.key? key
 
                 Hiera.debug("Config: #{config[key].inspect}")
                 type = config[key]['type']
 
-                if self.methods.include? "type_#{type}".to_sym
+                if methods.include? "type_#{type}".to_sym
 
                     begin
-                        answer = self.send("type_#{type}".to_sym, config[key])
-                        Hiera.debug( answer )
+                        answer = send("type_#{type}".to_sym, config[key])
+                        Hiera.debug(answer)
                         return answer
                     rescue Aws::Errors::MissingRegionError, Aws::Errors::MissingCredentialsError
-                        Hiera.warn("No IAM role or ENV based AWS config - skipping")
+                        Hiera.warn('No IAM role or ENV based AWS config - skipping')
                         return nil
                     end
 
                 end
 
                 Hiera.debug("Type of AWS SDK lookup '#{type}' invalid")
-                return nil
-
+                nil
             end
 
-            def aws_config
+            def config_file_name
 
-                require 'yaml'
+                default_config_path = '/etc/puppet/sf_hiera_aws.yaml'
 
-                default_config_path = "/etc/puppet/sf_hiera_aws.yaml"
-
-                if ! Config[:aws_sdk].nil?
+                if !Config[:aws_sdk].nil?
                     config_file = Config[:aws_sdk][:config_file] || default_config_path
                 else
                     config_file = default_config_path
                 end
 
+                return config_file
+
+            end
+
+            def config_directory_name
+
+                default_config_path = '/etc/puppet/sf_hiera_aws.d'
+
+                if !Config[:aws_sdk].nil?
+                    config_dir = Config[:aws_sdk][:config_directory] || default_config_path
+                else
+                    config_dir = default_config_path
+                end
+
+                return config_dir
+
+            end
+
+
+            def aws_config
+
+                require 'yaml'
+
+                config_file = config_file_name
+
                 if File.exist?(config_file)
-                    config = YAML::load_file(config_file)
+                    config = YAML.load_file(config_file)
                 else
                     Hiera.warn("No config file #{config_file} found")
                     config = {}
                 end
 
-                config
+                # Merge configs from the config directory too
 
+                config_directory = config_directory_name
+
+                if File.directory?(config_directory)
+                    Dir.entries(config_directory).sort.each do |p|
+                        next if p == '.' or p == '..'
+                        to_merge = YAML.load_file( File.join( config_directory, p ) )
+                        config.merge! to_merge
+                    end
+                end
+
+                config
             end
 
-            def recursive_interpolate_config(h,scope)
+            def recursive_interpolate_config(h, scope)
                 case h
                 when Hash
                     Hash[
                     h.map do |k, v|
-                        [ Backend.parse_answer(k, scope), recursive_interpolate_config(v,scope) ]
+                        [Backend.parse_answer(k, scope), recursive_interpolate_config(v, scope)]
                     end
                     ]
                 when Enumerable
-                    h.map { |v| recursive_interpolate_config(v,scope) }
+                    h.map { |v| recursive_interpolate_config(v, scope) }
                 when String
-                    Backend.parse_answer(h,scope)
+                    Backend.parse_answer(h, scope)
                 else
                     h
                 end
             end
 
             def type_ec2_instance(options)
-
                 options = {
                     'return'  => [
                         :instance_id,
@@ -106,25 +155,23 @@ class Hiera
                     ]
                 }.merge(options)
 
-                ec2 = Aws::EC2::Resource.new()
+                ec2 = get_ec2_client
 
                 if options.key? 'filters'
-                    instances = ec2.instances( filters: options['filters'] ) || []
+                    instances = ec2.describe_instances(filters: options['filters']).reservations.first.instances || []
                 else
-                    instances = ec2.instances() || []
+                    instances = ec2.describe_instances().reservations.first.instances || []
                 end
 
                 instances.collect do |i|
-                    Hash[ options['return'].map { |f|
-                        [f.to_s, i.methods.include?(f) ? i.send(f) : nil ]
-                    } ]
+                    Hash[options['return'].map do |f|
+                        [f.to_s, i.key?(f) ? i[f] : nil]
+                    end]
                 end
-
             end
 
             def type_rds_db_instance(options)
-
-                rds = Aws::RDS::Client.new()
+                rds = get_rds_client
 
                 if options.key? 'db_instance_identifier'
                     instances = rds.describe_db_instances(
@@ -134,19 +181,42 @@ class Hiera
                     instances = rds.describe_db_instances.db_instances
                 end
 
-                instances.collect do |i|
-                    {
-                        'db_instance_identifier' => i.db_instance_identifier,
-                        'endpoint_address'       => i.endpoint.address,
-                        'endpoint_port'          => i.endpoint.port,
-                    }
+                if !options.key? 'return'
+
+                    return instances.collect do |i|
+                        {
+                            'db_instance_identifier' => i.db_instance_identifier,
+                            'endpoint_address'       => i.endpoint.address,
+                            'endpoint_port'          => i.endpoint.port,
+                        }
+                    end
+
                 end
+
+                if options['return'] == :hostname
+
+                    return instances.first.endpoint.address
+
+                elsif options['return'] == :hostname_and_port
+
+                    return [
+                        instances.first.endpoint.address,
+                        instances.first.endpoint.port,
+                    ].join(':')
+
+                else
+
+                    Hiera.warn("No return handler for #{options['return']} in rds_db_instance")
+                    return nil
+
+                end
+
+
 
             end
 
             def type_elasticache_cache_cluster(options)
-
-                elasticache = Aws::ElastiCache::Client.new()
+                elasticache = get_elasticache_client
 
                 if options.key? 'cache_cluster_id'
                     clusters = elasticache.describe_cache_clusters(
@@ -159,23 +229,50 @@ class Hiera
                     ).cache_clusters
                 end
 
-                clusters.collect do |i|
-                    {
-                        'cache_cluster_id' => i.cache_cluster_id,
-                        'cache_nodes'      => i.cache_nodes.collect do |n|
-                            {
-                                'cache_node_id'    => n.cache_node_id,
-                                'endpoint_address' => n.endpoint.address,
-                                'endpoint_port'    => n.endpoint.port,
-                            }
-                        end
-                    }
+                if !options.key? 'return'
+
+                    return clusters.collect do |i|
+                        {
+                            'cache_cluster_id' => i.cache_cluster_id,
+                            'cache_nodes'      => i.cache_nodes.collect do |n|
+                                {
+                                    'cache_node_id'    => n.cache_node_id,
+                                    'endpoint_address' => n.endpoint.address,
+                                    'endpoint_port'    => n.endpoint.port,
+                                }
+                            end
+                        }
+                    end
+
                 end
+
+                if options['return'] == :hostname
+
+                    nodes = []
+
+                    clusters.each do |c|
+                        c.cache_nodes.each do |n|
+                            nodes.push(n.endpoint.address)
+                        end
+                    end
+
+                    return nodes
+
+                elsif options['return'] == :hostname_and_port
+
+                    nodes = []
+
+                    clusters.each do |c|
+                        c.cache_nodes.each do |n|
+                            nodes.push( [ n.endpoint.address, n.endpoint.port ].join(':') )
+                        end
+                    end
+
+                    return nodes
+
+                end
+
             end
-
         end
-
     end
-
 end
-

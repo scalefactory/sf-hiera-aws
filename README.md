@@ -42,6 +42,7 @@ The IAM role will need the following permissions:
 ## Configuration
 
 The plugin expects to find a configuration file under `/etc/puppet/sf_hiera_aws.yaml`, defining how we look up named keys.  The keys at the top level of this file determine the names of the hiera keys the plugin will provide; the configuration determines how these are looked up.
+Additional configuration can be given in files under `/etc/puppet/sf_hiera_aws.d`, which are evaluated in alphanumerical order. If a duplicate key is encountered in files evaluated later, this will override the earlier config.
 
 ### Example - EC2 nodes by tag
 
@@ -68,7 +69,9 @@ aws_am_bullseye_rds:
   db_instance_identifier: "%{::sf_location}-%{::sf_environment}-db"
 ```
 
-Calls to `:rds_db_instance` type keys return the instance identifier, endpoint address and endpoint port.
+Calls to `:rds_db_instance` type keys return the instance identifier, endpoint address and endpoint port in a hash.
+Pass a `return` key with value `:hostname` to have the hostname of the first matching instance returned.
+Pass a `return` key with value `:hostname_and_port` to have a `"<hostname>:<port>"` string of the first matching instance returned.
 
 ### Example - ElastiCache cluster by name
 
@@ -79,5 +82,6 @@ aws_am_bullseye_redis:
 ```
 
 Calls to `:elasticache_cache_cluster` type keys return a list of cache nodes, their IDs and endpoint address/ports.
-
+Pass a `return` key with value `:hostname` to have a list of hostnames of keys of all cache nodes matching the cache_cluster_id returned.
+Pass a `return` key with value `:hostname_and_port` to have a list of `"<hostname>:<port>"` strings returned.
 

@@ -1,0 +1,5 @@
+aws_ec2_ssh_nodes:
+    type: :ec2_instance
+    filters:
+    - name:   tag:aws:autoscaling:groupName
+      values: [ "euwest1-live-ssh" ]

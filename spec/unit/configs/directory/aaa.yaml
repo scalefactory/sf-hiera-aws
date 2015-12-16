@@ -1,0 +1,6 @@
+---
+aws_ec2_mongo_nodes:
+    type: :ec2_instance
+    filters:
+    - name:   tag:aws:autoscaling:groupName
+      values: [ "euwest1-live-mongo" ]
