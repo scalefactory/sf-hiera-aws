@@ -1,3 +1,7 @@
+## 0.0.4 (15 March 2016)
+
+ * Support lists of single items returned by ec2 instances
+
 ## 0.0.3 (16 December 2015)
 
  * Add rspec tests

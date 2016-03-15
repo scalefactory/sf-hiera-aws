@@ -58,7 +58,21 @@ aws_am_search_nodes:
     - :private_dns_name
 ```
 
-The value of `return` here is also the default, and so can be omitted. You can use any of the methods listed at http://docs.aws.amazon.com/sdkforruby/api/Aws/EC2/Instance.html to obtain other details from the Instance object.
+The value of `return` here is also the default, and so can be omitted. You can use any of the methods listed at http://docs.aws.amazon.com/sdkforruby/api/Aws/EC2/Instance.html to obtain other details from the Instance object.  Calls to this key will return a list of hashes, each containing `instace_id`, `private_ip_address` and `private_dns_name` keys.
+
+### Example - EC2 nodes by tag, single item list
+
+```
+aws_am_search_nodes:
+  type: :ec2_instance
+  filters:
+    - name:   tag:aws:autoscaling:groupName
+      values: [ "%{::sf_location}-%{::sf_environment}-search" ]
+  return: :private_ip_address
+```
+
+Here, we pass a single symbol to the `return` argument.  In this case, we'll get back a list of strings containing private ip addresses (rather than a list of hashes).
+
 
 
 ### Example - RDS instance by name
