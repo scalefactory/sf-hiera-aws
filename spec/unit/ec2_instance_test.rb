@@ -99,6 +99,35 @@ class Hiera
 
                 end
 
+                it 'should return a list of the element requested' do
+
+                    config_yaml = YAML.load(<<-EOF.unindent)
+                    ---
+                    aws_ec2_nodes:
+                      type: :ec2_instance
+                      filters:
+                        - name:   tag:aws:autoscaling:groupName
+                          values: [ euwest1-live-search" ]
+                      return: :instance_id
+                    EOF
+
+                    backend = Hiera::Backend::Sf_hiera_aws_backend.new
+                    backend.expects(:aws_config).returns(config_yaml)
+
+                    ec2 = Aws::EC2::Client.new()
+                    ec2.stub_responses(:describe_instances, @instance_stub)
+                    backend.expects(:get_ec2_client).returns(ec2)
+
+                    expect(backend.lookup('aws_ec2_nodes', nil, nil, nil)).to eq([
+                        'i-xxxxxxxx',
+                        'i-xxxxxxxy',
+                    ])
+
+                end
+
+
+
+
             end
         end
     end

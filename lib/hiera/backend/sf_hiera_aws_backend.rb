@@ -164,9 +164,25 @@ class Hiera
                 end
 
                 instances.collect do |i|
-                    Hash[options['return'].map do |f|
-                        [f.to_s, i.key?(f) ? i[f] : nil]
-                    end]
+                    if options['return'].is_a?(Array)
+
+                        # If the 'return' option is a list, we treat these
+                        # as a list of desired hash keys, and return a hash
+                        # containing only those keys from the API call
+                        
+                        Hash[options['return'].map do |f|
+                            [f.to_s, i.key?(f) ? i[f] : nil]
+                        end]
+
+                    elsif options['return'].is_a?(Symbol)
+
+                        # If the 'return' option is a symbol, we treat that
+                        # as the one hash key we care about, and return a list
+                        # of that.
+
+                        i.key?(options['return']) ? i[options['return']] : nil
+
+                    end
                 end
             end
 
