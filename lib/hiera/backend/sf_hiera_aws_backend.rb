@@ -157,10 +157,16 @@ class Hiera
 
                 ec2 = get_ec2_client
 
+                describe_options = {}
                 if options.key? 'filters'
-                    instances = ec2.describe_instances(filters: options['filters']).reservations.first.instances || []
-                else
-                    instances = ec2.describe_instances().reservations.first.instances || []
+                    describe_options = { filters: options[:filters] }
+                end
+
+                instances = []
+                ec2.describe_instances(describe_options).reservations.each do |r|
+                    r.instances.each do |i|
+                        instances << i
+                    end
                 end
 
                 instances.collect do |i|

@@ -125,6 +125,50 @@ class Hiera
 
                 end
 
+                it 'should handle multiple reservations' do
+
+                    config_yaml = YAML.load(<<-EOF.unindent)
+                    ---
+                    aws_ec2_nodes:
+                      type: :ec2_instance
+                      filters:
+                        - name:   tag:aws:autoscaling:groupName
+                          values: [ euwest1-live-search" ]
+                      return: :instance_id
+                    EOF
+
+                    backend = Hiera::Backend::Sf_hiera_aws_backend.new
+                    backend.expects(:aws_config).returns(config_yaml)
+
+                    ec2 = Aws::EC2::Client.new()
+                    ec2.stub_responses(:describe_instances, 
+                        { reservations: [ {
+                            instances: [
+                                {
+                                    instance_id:        'i-xxxxxxxx',
+                                    private_ip_address: '10.10.10.10',
+                                    private_dns_name:   'ip-10-10-10-10.eu-west-1.compute.internal',
+                                },
+                            ]
+                        },{
+                            instances: [
+                                {
+                                    instance_id:        'i-xxxxxxxy',
+                                    private_ip_address: '10.10.10.11',
+                                    private_dns_name:   'ip-10-10-10-11.eu-west-1.compute.internal',
+                                },
+                            ]
+                        } ] }
+                    )
+                    backend.expects(:get_ec2_client).returns(ec2)
+
+                    expect(backend.lookup('aws_ec2_nodes', nil, nil, nil)).to eq([
+                        'i-xxxxxxxx',
+                        'i-xxxxxxxy',
+                    ])
+
+                end
+
 
 
 
