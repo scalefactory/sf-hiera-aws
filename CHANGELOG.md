@@ -1,3 +1,7 @@
+## 0.0.6 (22 March 2016)
+
+ * Correct bad filter logic
+
 ## 0.0.5 (22 March 2016)
 
  * Correctly handle multiple reservations in ec2 lookups
