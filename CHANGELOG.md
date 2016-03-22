@@ -1,3 +1,7 @@
+## 0.0.5 (22 March 2016)
+
+ * Correctly handle multiple reservations in ec2 lookups
+
 ## 0.0.4 (15 March 2016)
 
  * Support lists of single items returned by ec2 instances
