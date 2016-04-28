@@ -99,3 +99,6 @@ Calls to `:elasticache_cache_cluster` type keys return a list of cache nodes, th
 Pass a `return` key with value `:hostname` to have a list of hostnames of keys of all cache nodes matching the cache_cluster_id returned.
 Pass a `return` key with value `:hostname_and_port` to have a list of `"<hostname>:<port>"` strings returned.
 
+## Notes
+
+* The order in which items are returned, for example EC2 nodes matching a tag, is undefined. If you are using an array of items in a configuration file template, for example, you are advised to sort the array in the template. This eliminates the likelihood of unnecessary configuration file changes, and the consequential unnecessary restart of dependent services.
