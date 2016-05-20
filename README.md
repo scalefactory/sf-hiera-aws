@@ -99,6 +99,18 @@ Calls to `:elasticache_cache_cluster` type keys return a list of cache nodes, th
 Pass a `return` key with value `:hostname` to have a list of hostnames of keys of all cache nodes matching the cache_cluster_id returned.
 Pass a `return` key with value `:hostname_and_port` to have a list of `"<hostname>:<port>"` strings returned.
 
+### Example - ElastiCache replication group by name
+
+```
+aws_app_redis:
+  type: :elasticache_replication_group
+  replication_group_id: "%{::sf_location}-%{::sf_environment}-redis"
+```
+
+Calls to `:elasticache_replication_group` return a list of replication groups, their primary endpoints and node group members.
+Pass a `return` key with value `:primary_endpoint` to have the hostname for the primary end point of the node group returned.
+Pass a `return` key with value `:primary_endpoint_and_port` to have the hostname and port returned as a colon-separated string.
+
 ## Notes
 
 * The order in which items are returned, for example EC2 nodes matching a tag, is undefined. If you are using an array of items in a configuration file template, for example, you are advised to sort the array in the template. This eliminates the likelihood of unnecessary configuration file changes, and the consequential unnecessary restart of dependent services.
