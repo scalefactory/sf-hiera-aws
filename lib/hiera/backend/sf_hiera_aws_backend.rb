@@ -303,6 +303,84 @@ class Hiera
                 end
 
             end
+
+            def type_elasticache_replication_group(options)
+                elasticache = get_elasticache_client
+
+                if options.key? 'replication_group_id'
+                    replgroups = elasticache.describe_replication_groups(
+                        replication_group_id: options['replication_group_id'],
+                    ).replication_groups
+                else
+                    replgroups = elasticache.describe_replication_groups.replication_groups
+                end
+
+                if !options.key? 'return'
+
+                    return replgroups.collect do |rg|
+                        {
+                            'replication_group_id' => rg.replication_group_id,
+                            'primary_endpoint_address' => rg.node_groups[0].primary_endpoint.address,
+                            'primary_endpoint_port' => rg.node_groups[0].primary_endpoint.port,
+                            'node_group_members' => rg.node_groups[0].node_group_members.collect do |ngm| 
+                                {
+                                    'cache_node_id' => ngm.cache_node_id,
+                                    'cache_cluster_id' => ngm.cache_cluster_id,
+                                    'read_endpoint_address' => ngm.read_endpoint.address,
+                                    'read_endpoint_port' => ngm.read_endpoint.port,
+                                    'current_role' => ngm.current_role,
+                                }
+                            end
+                        }
+                    end
+
+                end
+
+                if options['return'] == :read_endpoints
+
+                    if options.key? 'replication_group_id'
+                        return replgroups[0].node_groups[0].node_group_members.map { |ngm| ngm.read_endpoint.address }
+                    else
+                        Hiera.warn('Requested to return array of read endpoints for replication group, but no replication_group_id specified')
+                        return nil
+                    end
+
+                end
+
+                if options['return'] == :read_endpoints_and_ports
+
+                    if options.key? 'replication_group_id'
+                        return replgroups[0].node_groups[0].node_group_members.map { |ngm| "#{ngm.read_endpoint.address}:#{ngm.read_endpoint.port}" }
+                    else
+                        Hiera.warn('Requested to return array of read endpoints and ports for replication group, but no replication_group_id specified')
+                        return nil
+                    end
+
+                end
+
+                if options['return'] == :primary_endpoint
+
+                    primary_endpoints = []
+
+                    replgroups.each do |rg|
+                        primary_endpoints.push(rg.node_groups[0].primary_endpoint.address)
+                    end
+
+                    return primary_endpoints
+
+                elsif options['return'] == :primary_endpoint_and_port
+
+                    primary_endpoints = []
+
+                    replgroups.each do |rg|
+                        primary_endpoints.push( [ rg.node_groups[0].primary_endpoint.address, rg.node_groups[0].primary_endpoint.port ].join(':') )
+                    end
+
+                    return primary_endpoints
+
+               end
+
+            end
         end
     end
 end
