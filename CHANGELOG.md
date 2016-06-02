@@ -1,3 +1,9 @@
+# sf-hiera-aws changelog
+
+## 0.0.7 (2 June 2016)
+
+ * Add support for ElastiCache Replication Groups
+
 ## 0.0.6 (22 March 2016)
 
  * Correct bad filter logic

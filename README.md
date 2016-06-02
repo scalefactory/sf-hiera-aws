@@ -52,6 +52,8 @@ aws_am_search_nodes:
   filters:
     - name:   tag:aws:autoscaling:groupName
       values: [ "%{::sf_location}-%{::sf_environment}-search" ]
+    - name: instance-state-name
+      values: [ 'running' ]
   return:
     - :instance_id
     - :private_ip_address
@@ -59,6 +61,8 @@ aws_am_search_nodes:
 ```
 
 The value of `return` here is also the default, and so can be omitted. You can use any of the methods listed at http://docs.aws.amazon.com/sdkforruby/api/Aws/EC2/Instance.html to obtain other details from the Instance object.  Calls to this key will return a list of hashes, each containing `instace_id`, `private_ip_address` and `private_dns_name` keys.
+
+Note that by default all EC2 instances will be returned, including stopped instances. To return only the running instances, add a filter as shown in this example.
 
 ### Example - EC2 nodes by tag, single item list
 
@@ -116,3 +120,4 @@ Pass a `return` key with value `:read_endpoints_with_ports` to return an array o
 ## Notes
 
 * The order in which items are returned, for example EC2 nodes matching a tag, is undefined. If you are using an array of items in a configuration file template, for example, you are advised to sort the array in the template. This eliminates the likelihood of unnecessary configuration file changes, and the consequential unnecessary restart of dependent services.
+* By default, all EC2 instances are returned, including those in a non-running state. To return only running instances, add a filter on `name: instance-state-name` and `values: ['running']` as per the example above.
