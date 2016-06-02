@@ -59,7 +59,54 @@ class Hiera
 
             describe '#lookup' do
 
-               it 'should return a list of hostnames' do
+                it 'should return a list of read endpoints with ports' do
+
+                    config_yaml = YAML.load(<<-EOF.unindent)
+                    ---
+                    aws_redis_replication_group:
+                      type:                 :elasticache_replication_group
+                      replication_group_id: "euwest1-live-redis"
+                      return:               :read_endpoints_and_ports
+                    EOF
+
+                    backend = Hiera::Backend::Sf_hiera_aws_backend.new
+                    backend.expects(:aws_config).returns(config_yaml)
+
+                    elasticache = Aws::ElastiCache::Client.new()
+                    elasticache.stub_responses(:describe_replication_groups, @replication_groups_stub)
+                    backend.expects(:get_elasticache_client).returns(elasticache)
+
+                    expect(backend.lookup('aws_redis_replication_group', nil, nil, nil)).to eq([
+                        'euwest1-live-redis.xxxxxx.0001.euw1.cache.amazonaws.com:6379',
+                        'euwest1-live-redis2.xxxxxx.0001.euw1.cache.amazonaws.com:6379',
+                    ])
+                end
+
+
+                it 'should return a list of read endpoints' do
+
+                    config_yaml = YAML.load(<<-EOF.unindent)
+                    ---
+                    aws_redis_replication_group:
+                      type:                 :elasticache_replication_group
+                      replication_group_id: "euwest1-live-redis"
+                      return:               :read_endpoints
+                    EOF
+
+                    backend = Hiera::Backend::Sf_hiera_aws_backend.new
+                    backend.expects(:aws_config).returns(config_yaml)
+
+                    elasticache = Aws::ElastiCache::Client.new()
+                    elasticache.stub_responses(:describe_replication_groups, @replication_groups_stub)
+                    backend.expects(:get_elasticache_client).returns(elasticache)
+
+                    expect(backend.lookup('aws_redis_replication_group', nil, nil, nil)).to eq([
+                        'euwest1-live-redis.xxxxxx.0001.euw1.cache.amazonaws.com',
+                        'euwest1-live-redis2.xxxxxx.0001.euw1.cache.amazonaws.com',
+                    ])
+                end
+
+                it 'should return a list of primary endpoints' do
 
                     config_yaml = YAML.load(<<-EOF.unindent)
                     ---
