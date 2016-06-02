@@ -110,6 +110,8 @@ aws_app_redis:
 Calls to `:elasticache_replication_group` return a list of replication groups, their primary endpoints and node group members.
 Pass a `return` key with value `:primary_endpoint` to have the hostname for the primary end point of the node group returned.
 Pass a `return` key with value `:primary_endpoint_and_port` to have the hostname and port returned as a colon-separated string.
+Pass a `return` key with value `:read_endpoints` to return an array of read endpoint hostnames, if a `replication_group_id` is specified. Returns `nil` if `replication_group_id` is unspecified.
+Pass a `return` key with value `:read_endpoints_with_ports` to return an array of read endpoint hostnames and ports as colon delimted strongs. Returns `nil` if `replication_group_id` is unspecified.
 
 ## Notes
 

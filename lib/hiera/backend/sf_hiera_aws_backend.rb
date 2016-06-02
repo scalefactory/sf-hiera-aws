@@ -336,6 +336,26 @@ class Hiera
 
                 end
 
+                if options['return'] == :read_endpoints
+
+                    if options.key? 'replication_group_id'
+                        return replgroups[0].node_groups[0].node_group_members.map { |ngm| ngm.read_endpoint.address }
+                    else
+                        return nil
+                    end
+
+                end
+
+                if options['return'] == :read_endpoints_and_ports
+
+                    if options.key? 'replication_group_id'
+                        return replgroups[0].node_groups[0].node_group_members.map { |ngm| "#{ngm.read_endpoint.address}:#{ngm.read_endpoint.port}" }
+                    else
+                        return nil
+                    end
+
+                end
+
                 if options['return'] == :primary_endpoint
 
                     primary_endpoints = []
