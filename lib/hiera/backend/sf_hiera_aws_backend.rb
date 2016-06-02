@@ -341,6 +341,7 @@ class Hiera
                     if options.key? 'replication_group_id'
                         return replgroups[0].node_groups[0].node_group_members.map { |ngm| ngm.read_endpoint.address }
                     else
+                        Hiera.warn('Requested to return array of read endpoints for replication group, but no replication_group_id specified')
                         return nil
                     end
 
@@ -351,6 +352,7 @@ class Hiera
                     if options.key? 'replication_group_id'
                         return replgroups[0].node_groups[0].node_group_members.map { |ngm| "#{ngm.read_endpoint.address}:#{ngm.read_endpoint.port}" }
                     else
+                        Hiera.warn('Requested to return array of read endpoints and ports for replication group, but no replication_group_id specified')
                         return nil
                     end
 
