@@ -1,5 +1,9 @@
 # sf-hiera-aws changelog
 
+## 0.0.8 (11 January 2017)
+
+ * Add handling of JSON Parse failures that occur behind squid when not in AWS.
+
 ## 0.0.7 (2 June 2016)
 
  * Add support for ElastiCache Replication Groups
@@ -29,4 +33,3 @@
 ## 0.0.1 (2 September 2015)
 
  * Initial release
-
