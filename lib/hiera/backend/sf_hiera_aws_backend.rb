@@ -16,7 +16,7 @@ class Hiera
                     @instance_identity = JSON.parse(http.request(Net::HTTP::Get.new('/latest/dynamic/instance-identity/document')).body)
                 rescue Errno::EHOSTUNREACH, Net::OpenTimeout, Timeout::Error
                     Hiera.warn('No link-local endpoint - can\'t calculate region')
-                rescue JSON::ParserError => e
+                rescue JSON::ParserError
                     Hiera.warn('JSON Parse error - probably not in AWS')
                 rescue => e
                     Hiera.warn("Exception while finding instance identity: #{e.inspect}"
