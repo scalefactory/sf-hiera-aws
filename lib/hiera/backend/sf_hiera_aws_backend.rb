@@ -13,9 +13,14 @@ class Hiera
                     http = Net::HTTP.new('169.254.169.254', 80)
                     http.open_timeout = 1
                     http.read_timeout = 1
-                    @instance_identity = JSON.parse(http.request(Net::HTTP::Get.new('/latest/dynamic/instance-identity/document')).body)
+                    request = http.request(Net::HTTP::Get.new('/latest/dynamic/instance-identity/document')).body
+                    @instance_identity = JSON.parse(request)
                 rescue Errno::EHOSTUNREACH, Net::OpenTimeout, Timeout::Error
                     Hiera.warn('No link-local endpoint - can\'t calculate region')
+                rescue JSON::ParserError
+                    Hiera.warn("HTTP response from link-local endpoint returned invalid JSON: #{request}")
+                rescue => e
+                    Hiera.warn("Exception while finding instance identity: #{e.inspect}"
                 end
             end
 
