@@ -20,7 +20,7 @@ class Hiera
                 rescue JSON::ParserError
                     Hiera.warn("HTTP response from link-local endpoint returned invalid JSON: #{request}")
                 rescue => e
-                    Hiera.warn("Exception while finding instance identity: #{e.inspect}"
+                    Hiera.warn("Exception while finding instance identity: #{e.inspect}")
                 end
             end
 
