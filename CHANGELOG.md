@@ -1,5 +1,9 @@
 # sf-hiera-aws changelog
 
+## 0.0.9 (23 January 2017)
+
+ * Add autoscaling status information to EC2 instance
+
 ## 0.0.8 (11 January 2017)
 
  * Add handling of JSON Parse failures that occur behind squid when not in AWS.
