@@ -37,6 +37,10 @@ class Hiera
                 Aws::ElastiCache::Client.new
             end
 
+            def get_autoscaling_client
+                Aws::AutoScaling::Client.new
+            end
+
             public
 
             def initialize
@@ -385,6 +389,89 @@ class Hiera
 
                end
 
+            end
+
+            def type_autoscaling_group(options)
+                autoscaling = get_autoscaling_client
+
+                if options.key? 'auto_scaling_group_names'
+                    asgs = autoscaling.describe_auto_scaling_groups(
+                        auto_scaling_group_names: options['auto_scaling_group_names'],
+                    ).auto_scaling_groups
+                else
+                    asgs = autoscaling.describe_auto_scaling_groups.auto_scaling_groups
+                end
+
+                if !options.key? 'return'
+                    return asgs.collect do |asg|
+                        {
+                            'auto_scaling_group_name'   => asg.auto_scaling_group_name,
+                            'launch_configuration_name' => asg.launch_configuration_name,
+                            'load_balancer_names'       => asg.load_balancer_names,
+                            'instances'                 => asg.instances.collect do | instance |
+                                {
+                                    'instance_id' => instance.instance_id,
+                                    'availability_zone' => instance.availability_zone,
+                                    'lifecycle_state' => instance.lifecycle_state,
+                                    'health_status' => instance.health_status,
+                                    'launch_configuration_name' => instance.launch_configuration_name,
+                                    'protected_from_scale_in' => instance.protected_from_scale_in
+                                }
+                            end
+                        }
+                    end
+                else
+                    unless options.key? 'auto_scaling_group_names'
+                        Hiera.warn('Requested to return hash of instances for auto scaling group, but no auto_scaling_group_names specified')
+                        return nil
+                    end
+                end
+
+                if options['return'] == :instance_details_inservice_ip
+                    instances = []
+                    asgs = asgs.collect do |asg|
+                        {
+                            'instances' => asg.instances.select{|i| i.lifecycle_state == 'InService'}.map { |instance|
+                                { 'instance_id' => instance.instance_id } 
+                            }
+                        }
+                    end
+
+                    asgs.each do |asg|
+                        instances += asg['instances']
+                    end
+
+                    ec2_options = {
+                        'filters' => [{ 
+                            'name' => 'instance-id', 
+                            'values' => instances.map { |i| i['instance_id'] }
+                        }],
+                        'return'  => [ 'private_ip_address']
+                    }
+                    return type_ec2_instance(ec2_options)
+                else
+                    asgs.collect do |a|
+                        if options['return'].is_a?(Array)
+
+                            # If the 'return' option is a list, we treat these
+                            # as a list of desired hash keys, and return a hash
+                            # containing only those keys from the API call
+                            
+                            Hash[options['return'].map do |f|
+                                [f.to_s, a.key?(f) ? a[f] : nil]
+                            end]
+
+                        elsif options['return'].is_a?(Symbol)
+
+                            # If the 'return' option is a symbol, we treat that
+                            # as the one hash key we care about, and return a list
+                            # of that.
+
+                            a.key?(options['return']) ? a[options['return']] : nil
+
+                        end
+                    end
+                end
             end
         end
     end

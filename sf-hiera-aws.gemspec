@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
     spec.name          = 'sf-hiera-aws'
-    spec.version       = '0.0.8'
+    spec.version       = '0.0.9'
     spec.authors       = ['Jon Topper','Mike Griffiths','Jack Thomas']
     spec.email         = ['jon@scalefactory.com','mike@scalefactory.com','jack@scalefactory.com']
 
